@@ -1,9 +1,12 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import axios from 'axios';
 import { randomUUID } from 'crypto';
+import Redis from 'ioredis';
 
 @Injectable()
 export class SendCallbackService {
+  constructor(@Inject('REDIS') private readonly redis: Redis) {}
+
   async sendCallback(body: { count: number }) {
     const count: number = body?.count ?? 10;
 
@@ -57,8 +60,19 @@ export class SendCallbackService {
 
     for (let i = 0; i < count; i++) {
       await axios.post(partnerCallbackUrl, payload);
-      console.log('sent callback', i + 1);
+      await this.redis.incr('vendor-send');
     }
     return { status: 200 };
+  }
+
+  async getCounter(): Promise<number> {
+    const value = await this.redis.get('vendor-send');
+    return Number(value ?? 0);
+  }
+
+  async resetCounter(): Promise<number> {
+    await this.redis.set('vendor-send', 0);
+    const value = await this.redis.get('vendor-send');
+    return Number(value ?? 0);
   }
 }
