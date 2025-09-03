@@ -1,15 +1,21 @@
 // @ts-check
 import eslint from '@eslint/js';
-import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
+import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
 
 export default tseslint.config(
   {
-    ignores: ['eslint.config.mjs'],
+    ignores: [
+      'dist',            // build output
+      'node_modules',    // dependencies
+    ],
   },
+  // Base ESLint recommended
   eslint.configs.recommended,
+  // TypeScript rules (type-aware)
   ...tseslint.configs.recommendedTypeChecked,
+  // Prettier formatting
   eslintPluginPrettierRecommended,
   {
     languageOptions: {
@@ -17,18 +23,23 @@ export default tseslint.config(
         ...globals.node,
         ...globals.jest,
       },
-      sourceType: 'commonjs',
       parserOptions: {
-        projectService: true,
+        project: './tsconfig.json',      // 👈 important for type-aware linting
         tsconfigRootDir: import.meta.dirname,
+        sourceType: 'module',
       },
     },
   },
   {
     rules: {
-      '@typescript-eslint/no-explicit-any': 'off',
+      // Customize rules
+      '@typescript-eslint/no-explicit-any': 'off',      // allow `any`
       '@typescript-eslint/no-floating-promises': 'warn',
-      '@typescript-eslint/no-unsafe-argument': 'warn'
+      '@typescript-eslint/no-unsafe-argument': 'warn',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      // Prettier integration
+      'prettier/prettier': ['error', { endOfLine: 'auto' }],
     },
   },
 );

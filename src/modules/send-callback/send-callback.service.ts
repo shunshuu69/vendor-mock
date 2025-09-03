@@ -16,6 +16,7 @@ export class SendCallbackService {
       process.env.CALLBACK_URL1,
       process.env.CALLBACK_URL2,
       process.env.CALLBACK_URL3,
+      process.env.CALLBACK_URL4,
     ].filter((u): u is string => !!u);
 
     const selectedCallbackUrl =
@@ -24,6 +25,20 @@ export class SendCallbackService {
             Math.floor(Math.random() * callbackUrlCandidates.length)
           ]
         : undefined;
+
+    // Derive partner code (A/B/C/D) from the last path segment of the selected callback URL
+    const partnerCode = (() => {
+      if (!selectedCallbackUrl) return 'unknown';
+      try {
+        const url = new URL(selectedCallbackUrl);
+        const segments = url.pathname.split('/').filter(Boolean);
+        const last = segments[segments.length - 1] || '';
+        const code = last.charAt(0).toUpperCase();
+        return ['A', 'B', 'C', 'D'].includes(code) ? code : 'unknown';
+      } catch {
+        return 'unknown';
+      }
+    })();
 
     const partnerId =
       'A' +
@@ -60,19 +75,41 @@ export class SendCallbackService {
 
     for (let i = 0; i < count; i++) {
       await axios.post(partnerCallbackUrl, payload);
-      await this.redis.incr('vendor-send');
+      await this.redis.incr(`vendor-send:${partnerCode}`);
     }
     return { status: 200 };
   }
 
-  async getCounter(): Promise<number> {
-    const value = await this.redis.get('vendor-send');
-    return Number(value ?? 0);
+  async getCounter(): Promise<Record<string, number>> {
+    const codes = ['A', 'B', 'C', 'D', 'unknown'] as const;
+    const keys = codes.map((c) => `vendor-send:${c}`);
+    const values = await this.redis.mget(...keys);
+    const result: Record<string, number> = {};
+    let total = 0;
+    values.forEach((v, i) => {
+      const n = Number(v ?? 0);
+      result[codes[i]] = n;
+      total += n;
+    });
+    result.total = total;
+    return result;
   }
 
-  async resetCounter(): Promise<number> {
-    await this.redis.set('vendor-send', 0);
-    const value = await this.redis.get('vendor-send');
-    return Number(value ?? 0);
+  async resetCounter(): Promise<Record<string, number>> {
+    const codes = ['A', 'B', 'C', 'D', 'unknown'] as const;
+    for (const c of codes) {
+      await this.redis.set(`vendor-send:${c}`, 0);
+    }
+    const keys = codes.map((c) => `vendor-send:${c}`);
+    const values = await this.redis.mget(...keys);
+    const result: Record<string, number> = {};
+    let total = 0;
+    values.forEach((v, i) => {
+      const n = Number(v ?? 0);
+      result[codes[i]] = n;
+      total += n;
+    });
+    result.total = total;
+    return result;
   }
 }
