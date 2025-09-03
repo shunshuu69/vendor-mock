@@ -19,11 +19,7 @@ export class SendCallbackService {
       process.env.CALLBACK_URL4,
     ].filter((u): u is string => !!u);
 
-    const partnerId =
-      'A' +
-      Math.floor(Math.random() * 100)
-        .toString()
-        .padStart(2, '0');
+    const partnerId = ['A', 'B', 'C', 'D'][Math.floor(Math.random() * 4)];
     const merchantId =
       'A' +
       Math.floor(Math.random() * 1000)
