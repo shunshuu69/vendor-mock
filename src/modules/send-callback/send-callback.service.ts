@@ -51,16 +51,16 @@ export class SendCallbackService {
         .toString()
         .padStart(3, '0');
 
-    const payload = {
-      id: randomUUID(),
-      partnerId,
-      merchantId,
-      amount,
-      status: 'Success',
-      ...(selectedCallbackUrl
-        ? { callbackUrl: selectedCallbackUrl + '/partner-callback' }
-        : {}),
-    };
+    // const payload = {
+    //   id: randomUUID(),
+    //   partnerId,
+    //   merchantId,
+    //   amount,
+    //   status: 'Success',
+    //   ...(selectedCallbackUrl
+    //     ? { callbackUrl: selectedCallbackUrl + '/partner-callback' }
+    //     : {}),
+    // };
 
     const baseCallbackUrl = process.env.PARTNER_CALLBACK_URL;
     if (!baseCallbackUrl) {
@@ -73,10 +73,41 @@ export class SendCallbackService {
 
     console.log('partnerCallbackUrl', partnerCallbackUrl);
 
+    const run = async (payload: any) => {
+      const res = await axios.post(partnerCallbackUrl, payload);
+
+      // if success
+      if (res.status >= 200 && res.status < 300) {
+        await this.redis.incr(`vendor-send:${partnerCode}`);
+      }
+    };
+
+    // using promises: collect in a normal loop (no map) and run concurrently
+    const promises: Promise<void>[] = [];
     for (let i = 0; i < count; i++) {
-      await axios.post(partnerCallbackUrl, payload);
-      await this.redis.incr(`vendor-send:${partnerCode}`);
+      const payload = {
+        id: randomUUID(),
+        partnerId,
+        merchantId,
+        amount,
+        status: 'Success',
+        ...(selectedCallbackUrl
+          ? { callbackUrl: selectedCallbackUrl + '/partner-callback' }
+          : {}),
+      };
+      promises.push(run(payload));
     }
+
+    await Promise.all(promises);
+
+    // for (let i = 0; i < count; i++) {
+    //   const res = await axios.post(partnerCallbackUrl, payload);
+
+    //   // if success
+    //   if (res.status >= 200 && res.status < 300) {
+    //     await this.redis.incr(`vendor-send:${partnerCode}`);
+    //   }
+    // }
     return { status: 200 };
   }
 
