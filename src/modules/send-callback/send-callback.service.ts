@@ -19,27 +19,6 @@ export class SendCallbackService {
       process.env.CALLBACK_URL4,
     ].filter((u): u is string => !!u);
 
-    const selectedCallbackUrl =
-      callbackUrlCandidates.length > 0
-        ? callbackUrlCandidates[
-            Math.floor(Math.random() * callbackUrlCandidates.length)
-          ]
-        : undefined;
-
-    // Derive partner code (A/B/C/D) from the last path segment of the selected callback URL
-    const partnerCode = (() => {
-      if (!selectedCallbackUrl) return 'unknown';
-      try {
-        const url = new URL(selectedCallbackUrl);
-        const segments = url.pathname.split('/').filter(Boolean);
-        const last = segments[segments.length - 1] || '';
-        const code = last.charAt(0).toUpperCase();
-        return ['A', 'B', 'C', 'D'].includes(code) ? code : 'unknown';
-      } catch {
-        return 'unknown';
-      }
-    })();
-
     const partnerId =
       'A' +
       Math.floor(Math.random() * 100)
@@ -73,7 +52,7 @@ export class SendCallbackService {
 
     console.log('partnerCallbackUrl', partnerCallbackUrl);
 
-    const run = async (payload: any) => {
+    const run = async (payload: any, partnerCode: string) => {
       const res = await axios.post(partnerCallbackUrl, payload);
 
       // if success
@@ -85,6 +64,27 @@ export class SendCallbackService {
     // using promises: collect in a normal loop (no map) and run concurrently
     const promises: Promise<void>[] = [];
     for (let i = 0; i < count; i++) {
+      const selectedCallbackUrl =
+        callbackUrlCandidates.length > 0
+          ? callbackUrlCandidates[
+              Math.floor(Math.random() * callbackUrlCandidates.length)
+            ]
+          : undefined;
+
+      // Derive partner code (A/B/C/D) from the last path segment of the selected callback URL
+      const partnerCode = (() => {
+        if (!selectedCallbackUrl) return 'unknown';
+        try {
+          const url = new URL(selectedCallbackUrl);
+          const segments = url.pathname.split('/').filter(Boolean);
+          const last = segments[segments.length - 1] || '';
+          const code = last.charAt(0).toUpperCase();
+          return ['A', 'B', 'C', 'D'].includes(code) ? code : 'unknown';
+        } catch {
+          return 'unknown';
+        }
+      })();
+
       const payload = {
         id: randomUUID(),
         partnerId,
@@ -95,7 +95,7 @@ export class SendCallbackService {
           ? { callbackUrl: selectedCallbackUrl + '/partner-callback' }
           : {}),
       };
-      promises.push(run(payload));
+      promises.push(run(payload, partnerCode));
     }
 
     await Promise.all(promises);
