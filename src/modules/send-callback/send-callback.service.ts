@@ -12,20 +12,6 @@ export class SendCallbackService {
 
     const amount = Math.floor(Math.random() * 1000000);
 
-    const callbackUrlCandidates = [
-      process.env.CALLBACK_URL1,
-      process.env.CALLBACK_URL2,
-      process.env.CALLBACK_URL3,
-      process.env.CALLBACK_URL4,
-    ].filter((u): u is string => !!u);
-
-    const partnerId = ['A', 'B', 'C', 'D'][Math.floor(Math.random() * 4)];
-    const merchantId =
-      'A' +
-      Math.floor(Math.random() * 1000)
-        .toString()
-        .padStart(3, '0');
-
     // const payload = {
     //   id: randomUUID(),
     //   partnerId,
@@ -60,6 +46,20 @@ export class SendCallbackService {
     // using promises: collect in a normal loop (no map) and run concurrently
     const promises: Promise<void>[] = [];
     for (let i = 0; i < count; i++) {
+      const callbackUrlCandidates = [
+        process.env.CALLBACK_URL1,
+        process.env.CALLBACK_URL2,
+        process.env.CALLBACK_URL3,
+        process.env.CALLBACK_URL4,
+      ].filter((u): u is string => !!u);
+
+      const partnerId = ['A', 'B', 'C', 'D'][Math.floor(Math.random() * 4)];
+      const merchantId =
+        'A' +
+        Math.floor(Math.random() * 1000)
+          .toString()
+          .padStart(3, '0');
+
       const selectedCallbackUrl =
         callbackUrlCandidates.length > 0
           ? callbackUrlCandidates[
